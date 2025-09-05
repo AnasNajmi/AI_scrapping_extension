@@ -8,7 +8,7 @@ const root = ReactDOM.createRoot(document.getElementById('sidepanel-root')!);
 
 root.render(
   <React.StrictMode>
-    <div className="w-full h-screen bg-gray-900 text-white overflow-hidden">
+    <div className="w-full h-screen bg-gray-900 text-white">
       <App />
     </div>
   </React.StrictMode>

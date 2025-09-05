@@ -46,9 +46,11 @@ function App() {
       </nav>
 
       <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-4xl p-4 md:p-6">
         {activeTab === 'current' && <CurrentPagePanel />}
         {activeTab === 'urls' && <URLsPanel />}
         {activeTab === 'file' && <FileImagePanel />}
+        </div>
       </main>
 
       <footer className="bg-gray-50 p-3 border-t border-gray-200">
@@ -56,7 +58,7 @@ function App() {
           <span>v1.0.0</span>
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span>Connected</span>
+            <span>disconnected</span>
           </div>
         </div>
       </footer>

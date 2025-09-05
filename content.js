@@ -7,8 +7,113 @@ if (window.webScraperContentLoaded) {
   window.webScraperContentLoaded = true;
   console.log("Content script initializing...");
 
-function g(e){return e.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[]}function d(){return Array.from(document.images).map(e=>e.src)}function h(){const e=window.location.href,t=document.title,r=window.location.hostname;return{url:e,title:t,domain:r}}function w(e){const t=[],r=window.location.href;try{const o=["[data-item]",".item",".card",".product",".listing","article","tr",".row",".result",'[class*="item"]','[class*="post"]','[class*="entry"]','[id*="item"]','[data-testid*="item"]'];let n=null;for(const l of o){const a=document.querySelectorAll(l);if(a.length>1){n=a;break}}if(!n||n.length===0){const l=document.querySelectorAll("*");n=Array.from(l).filter(a=>a.children.length>0&&a.textContent&&a.textContent.trim().length>20)}(!n||n.length===0)&&(n=document.querySelectorAll("body")),n.forEach((l,a)=>{if(e.maxRows&&t.length>=e.maxRows)return;const u={};let f=!1;if(e.fields.forEach(s=>{try{let m=l.querySelectorAll(s.selector);if(m.length===0&&s.selector.includes(",")){const c=s.selector.split(",").map(p=>p.trim());for(const p of c){m=l.querySelectorAll(p);if(m.length>0)break}}let i="";m.length>0&&(s.type==="url"||s.type==="image"?i=Array.from(m).map(c=>{if(c instanceof HTMLAnchorElement)return c.href.startsWith("http")?c.href:new URL(c.href,window.location.origin).href;if(c instanceof HTMLImageElement)return c.src.startsWith("http")?c.src:new URL(c.src,window.location.origin).href;const p=c.getAttribute("href")||c.getAttribute("src");return p?p.startsWith("http")?p:new URL(p,window.location.origin).href:""}).filter(c=>c):i=Array.from(m).map(c=>c.textContent?.trim()||"").filter(c=>c).join(" | "),i&&i.length>0&&(f=!0)),u[s.name]=i}catch(m){console.error(`Error extracting field ${s.name}:`,m),u[s.name]=""}}),f){const s={...u,_meta:{pageIndex:0,rowIndex:a,extractedAt:new Date().toISOString(),source:r,userAgent:navigator.userAgent}};t.push(s)}}),t}catch(o){return console.error("Error extracting data:",o),[]}}async function y(e){return new Promise(t=>{let r=0,o=document.body.scrollHeight,n;const l=()=>{const a=document.body.scrollHeight;a>o&&(o=a,clearTimeout(n),r<e.maxScrolls?(r++,window.scrollTo(0,document.body.scrollHeight),n=setTimeout(l,e.idleTimeout)):t())};window.scrollTo(0,document.body.scrollHeight),r++,window.addEventListener("scroll",l,{passive:!0}),n=setTimeout(()=>{window.removeEventListener("scroll",l),t()},e.idleTimeout)})}function x(e){try{const t=document.querySelector(e);return t&&t.offsetParent!==null?(t.click(),!0):!1}catch(t){return console.error("Error clicking next page:",t),!1}}function checkPageAccess(){const e=window.location.href;if(e.startsWith("chrome://")||e.startsWith("chrome-extension://")||e.startsWith("about:")||e.startsWith("moz-extension://"))return{accessible:!1,reason:"browser-internal"};if(e.startsWith("file://"))return{accessible:!1,reason:"local-file"};if(document.readyState!=="complete"&&document.readyState!=="interactive")return{accessible:!1,reason:"loading"};return{accessible:!0,reason:"ok"}}
 
+
+function g(e){return e.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[]}
+function d(){return Array.from(document.images).map(e=>e.src)}
+function h(){const e=window.location.href,t=document.title,r=window.location.hostname;return{url:e,title:t,domain:r}}
+function w(rawCfg){
+  const outRows=[], sourceUrl=window.location.href;
+  // normalize incoming config to avoid undefined access
+  const cfg = {
+    fields: Array.isArray(rawCfg?.fields) ? rawCfg.fields : [],
+    maxRows: Number.isFinite(rawCfg?.maxRows) ? rawCfg.maxRows : Infinity,
+  };
+  try{
+    const candidates=["[data-item]",".item",".card",".product",".listing","article","tr",".row",".result",'[class*="item"]','[class*="post"]','[class*="entry"]','[id*="item"]','[data-testid*="item"]'];
+    let nodes=null;
+    for(const sel of candidates){
+      const list=document?.querySelectorAll?.(sel)||[];
+      if(list.length>1){nodes=list;break}
+    }
+    if(!nodes || (nodes.length??0)===0){
+      const all=document?.querySelectorAll?.("*")||[];
+      nodes=Array.from(all).filter(el=>el?.children?.length>0 && typeof el?.textContent==="string" && el.textContent.trim().length>20);
+    }
+    if(!nodes || (nodes.length??0)===0){
+      nodes=document?.querySelectorAll?.("body")||[];
+    }
+    Array.from(nodes).forEach((container,rowIndex)=>{
+      if(outRows.length>=cfg.maxRows) return;
+      const out={}; let hasAny=false;
+      for(const field of cfg.fields){
+        try{
+          const name = field?.name ?? "";
+          const sel = typeof field?.selector==="string" ? field.selector.trim() : "";
+          if(!name){continue}
+          if(!sel){out[name]=""; continue}
+          let found = container?.querySelectorAll?.(sel) || [];
+          if((found?.length??0)===0 && sel.includes(",")){
+            for(const sSel of sel.split(",").map(s=>s.trim()).filter(Boolean)){
+              found = container?.querySelectorAll?.(sSel) || [];
+              if((found?.length??0)>0) break;
+            }
+          }
+          let value="";
+          if((found?.length??0)>0){
+            if(field.type==="url" || field.type==="image"){
+              value = Array.from(found).map(n=>{
+                if(n instanceof HTMLAnchorElement){
+                  const href=n.getAttribute("href")||"";
+                  return href? new URL(href,window.location.origin).href : "";
+                }
+                if(n instanceof HTMLImageElement){
+                  const src=n.getAttribute("src")||"";
+                  return src? new URL(src,window.location.origin).href : "";
+                }
+                const ref=n.getAttribute?.("href")||n.getAttribute?.("src")||"";
+                return ref? new URL(ref,window.location.origin).href : "";
+              }).filter(Boolean).join(" | ");
+            } else if(field.type==="attribute" && typeof field.attribute==="string" && field.attribute){
+              value = Array.from(found).map(n=>n.getAttribute?.(field.attribute)||"").filter(Boolean).join(" | ");
+            } else {
+              value = Array.from(found).map(n=>(n.textContent??"").trim()).filter(Boolean).join(" | ");
+            }
+          }
+          if(value && value.length>0) hasAny=true;
+          out[name]=value;
+        }catch(err){
+          console.error(`Error extracting field ${field?.name||"unknown"}:`,err);
+          if(field?.name) out[field.name]="";
+        }
+      }
+      if(hasAny){
+        outRows.push({
+          ...out,
+          _meta:{pageIndex:0,rowIndex,extractedAt:new Date().toISOString(),source:sourceUrl,userAgent:navigator.userAgent}
+        });
+      }
+    });
+    return outRows;
+  }catch(err){
+    console.error("Error extracting data:",err);
+    return [];
+  }
+}
+async function y(cfg){
+  // safe defaults
+  const maxScrolls = Number.isFinite(cfg?.maxScrolls) ? cfg.maxScrolls : 3;
+  const idleTimeout = Number.isFinite(cfg?.idleTimeout) ? cfg.idleTimeout : 1000;
+  return new Promise(t=>{let r=0,o=document.body.scrollHeight,n;
+    const l=()=>{const a=document.body.scrollHeight;
+      if(a>o){o=a; clearTimeout(n);
+        if(r<maxScrolls){r++; window.scrollTo(0,document.body.scrollHeight); n=setTimeout(l,idleTimeout); return;}
+      }
+      t();
+    };
+    window.scrollTo(0,document.body.scrollHeight); r++;
+    window.addEventListener("scroll",l,{passive:!0});
+    n=setTimeout(()=>{window.removeEventListener("scroll",l); t();}, idleTimeout);
+  })
+}
+function x(nextSelector){
+  try{
+    if(!nextSelector || typeof nextSelector!=="string") return !1;
+    const t=document.querySelector(nextSelector);
+    return t&&t.offsetParent!==null?(t.click(),!0):!1
+  }catch(t){return console.error("Error clicking next page:",t),!1}
+}
+function checkPageAccess(){const e=window.location.href;if(e.startsWith("chrome://")||e.startsWith("chrome-extension://")||e.startsWith("about:")||e.startsWith("moz-extension://"))return{accessible:!1,reason:"browser-internal"};if(e.startsWith("file://"))return{accessible:!1,reason:"local-file"};if(document.readyState!=="complete"&&document.readyState!=="interactive")return{accessible:!1,reason:"loading"};return{accessible:!0,reason:"ok"}}
 chrome.runtime.onMessage.addListener((e,t,r)=>{
   console.log("Content script received message:",e);
   try{
@@ -31,10 +136,21 @@ chrome.runtime.onMessage.addListener((e,t,r)=>{
         const o=h();
         r({success:!0,pageInfo:{...o,accessible:accessCheck.accessible,readyState:document.readyState}});
         break;
-      case"extractCurrentPage":
-        const n=w(e.config);
+    //   case"extractCurrentPage":
+    //     const n=w(e.config);
+    //     r({success:!0,data:n,extractedCount:n.length});
+    //     break;
+         case"extractCurrentPage": {
+        // Normalize config so extractor never sees undefined
+        const raw = (e && e.config) ? e.config : {};
+        const safeCfg = {
+          fields: Array.isArray(raw.fields) ? raw.fields : [],
+          maxRows: Number.isFinite(raw.maxRows) ? raw.maxRows : Infinity,
+        };
+        const n=w(safeCfg);
         r({success:!0,data:n,extractedCount:n.length});
         break;
+      }
       case"scrollPage":
         return y(e.scrollConfig).then(()=>{
           r({success:!0,scrolled:!0})

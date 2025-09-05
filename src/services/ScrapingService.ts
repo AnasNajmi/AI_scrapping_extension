@@ -93,7 +93,15 @@ export class ScrapingService {
       const tab = await this.getActiveTab();
       if (!tab.id) throw new Error('Invalid tab ID');
       await this.injectContentScript(tab.id);
-      const response = await this.sendMessage(tab.id, { action: 'extractCurrentPage', config });
+      // const response = await this.sendMessage(tab.id, { action: 'extractCurrentPage', config });
+       // normalize config so content.js never sees undefined parts
+      const safeConfig: ExtractionConfig = {
+        ...config,
+        fields: Array.isArray(config?.fields) ? config.fields : [],
+        pagination: config?.pagination ?? { type: 'no_pagination' },
+        maxRows: typeof config?.maxRows === 'number' ? config.maxRows : undefined,
+      };
+      const response = await this.sendMessage(tab.id, { action: 'extractCurrentPage', config: safeConfig });
       const extractedData: ExtractedRowWithMeta[] = response.data || [];
       const deduplicatedData = this.deduplicateData(extractedData, config.dedupeKey);
       const endTime = Date.now();
@@ -153,8 +161,23 @@ export class ScrapingService {
   private async extractWithInfiniteScroll(config: ExtractionConfig, tabId: number): Promise<ExtractionResult> {
     const startTime = Date.now();
     try {
-      await this.sendMessage(tabId, { action: 'scrollPage', scrollConfig: { maxScrolls: config.pagination.maxScrolls || 10, idleTimeout: config.pagination.idleTimeout || 5000 } });
-      const response = await this.sendMessage(tabId, { action: 'extractCurrentPage', config });
+      // await this.sendMessage(tabId, { action: 'scrollPage', scrollConfig: { maxScrolls: config.pagination.maxScrolls || 10, idleTimeout: config.pagination.idleTimeout || 5000 } });
+      // const response = await this.sendMessage(tabId, { action: 'extractCurrentPage', config });
+       await this.sendMessage(tabId, {
+       action: 'scrollPage',
+       scrollConfig: {
+         maxScrolls: config?.pagination?.maxScrolls ?? 10,
+         idleTimeout: config?.pagination?.idleTimeout ?? 5000
+       }
+     });
+     const safeConfig: ExtractionConfig = {
+       ...config,
+       fields: Array.isArray(config?.fields) ? config.fields : [],
+       pagination: config?.pagination ?? { type: 'no_pagination' },
+       maxRows: typeof config?.maxRows === 'number' ? config.maxRows : undefined,
+     };
+     const response = await this.sendMessage(tabId, { action: 'extractCurrentPage', config: safeConfig });
+
       const extractedData: ExtractedRowWithMeta[] = response.data || [];
       const deduplicatedData = this.deduplicateData(extractedData, config.dedupeKey);
       return {
@@ -175,15 +198,26 @@ export class ScrapingService {
     try {
       while (currentPage < maxPages) {
         await this.injectContentScript(tabId);
-        const response = await this.sendMessage(tabId, { action: 'extractCurrentPage', config });
+        // const response = await this.sendMessage(tabId, { action: 'extractCurrentPage', config });
+           const safeConfig: ExtractionConfig = {
+          ...config,
+          fields: Array.isArray(config?.fields) ? config.fields : [],
+          pagination: config?.pagination ?? { type: 'click_pagination' },
+          maxRows: typeof config?.maxRows === 'number' ? config.maxRows : undefined,
+        };
+        const response = await this.sendMessage(tabId, { action: 'extractCurrentPage', config: safeConfig });
         const pageData: ExtractedRowWithMeta[] = response.data || [];
         pageData.forEach(row => { row._meta.pageIndex = currentPage; });
         allData.push(...pageData);
         currentPage++;
         if (config.pagination.nextSelector) {
           await this.injectContentScript(tabId);
-          const clickResponse = await this.sendMessage(tabId, { action: 'clickNextPage', nextSelector: config.pagination.nextSelector });
-          if (!clickResponse.success) break;
+          // const clickResponse = await this.sendMessage(tabId, { action: 'clickNextPage', nextSelector: config.pagination.nextSelector });
+            const clickResponse = await this.sendMessage(tabId, {
+            action: 'clickNextPage',
+            nextSelector: config.pagination.nextSelector
+          });
+         if (!clickResponse.success) break;
           await new Promise(resolve => setTimeout(resolve, 3000));
           await this.injectContentScript(tabId);
         } else break;
