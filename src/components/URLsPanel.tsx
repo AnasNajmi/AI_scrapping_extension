@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ErrorBoundary } from './ErrorBoundary.js';
 
 function URLsPanel() {
   const [urls, setUrls] = useState(['']);
@@ -70,14 +71,17 @@ function URLsPanel() {
   const validUrlsCount = urls.filter(url => url.trim() !== '').length;
 
   return (
-    <div className="p-4 space-y-6">
+    <ErrorBoundary fallback="Error loading URLs panel. Please refresh and try again.">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6"
+             style={{ maxHeight: 'calc(100vh - 120px)' }}>
       {/* Step 1: Add URLs */}
       <div>
         <div className="flex items-center space-x-2 mb-4">
-          <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+          <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
             1
           </div>
-          <h2 className="text-lg font-semibold text-white">Add URLs to Scrape</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Add URLs to Scrape</h2>
         </div>
 
         <div className="space-y-3">
@@ -88,12 +92,12 @@ function URLsPanel() {
                 value={url}
                 onChange={(e) => updateUrl(index, e.target.value)}
                 placeholder={`Enter URL ${index + 1}...`}
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none transition-colors"
+                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:border-purple-500 focus:outline-none transition-colors"
               />
               {urls.length > 1 && (
                 <button
                   onClick={() => removeUrl(index)}
-                  className="w-8 h-8 text-red-400 hover:text-red-300 transition-colors flex items-center justify-center"
+                  className="w-8 h-8 text-red-600 hover:text-red-500 transition-colors flex items-center justify-center"
                 >
                   ✕
                 </button>
@@ -105,16 +109,16 @@ function URLsPanel() {
         <div className="flex items-center space-x-3 mt-4">
           <button
             onClick={addUrl}
-            className="px-4 py-2 text-purple-400 hover:text-purple-300 transition-colors flex items-center space-x-1"
+            className="px-4 py-2 text-purple-600 hover:text-purple-500 transition-colors flex items-center space-x-1"
           >
             <span>+</span>
             <span>Add URL</span>
           </button>
 
-          <span className="text-gray-500">|</span>
+          <span className="text-gray-400">|</span>
 
-          <label className="px-4 py-2 text-purple-400 hover:text-purple-300 transition-colors flex items-center space-x-1 cursor-pointer">
-            <span>�</span>
+          <label className="px-4 py-2 text-purple-600 hover:text-purple-500 transition-colors flex items-center space-x-1 cursor-pointer">
+            <span>📁</span>
             <span>Upload CSV</span>
             <input
               type="file"
@@ -126,10 +130,10 @@ function URLsPanel() {
 
           {urls.length > 1 && (
             <>
-              <span className="text-gray-500">|</span>
+              <span className="text-gray-400">|</span>
               <button
                 onClick={clearAllUrls}
-                className="px-4 py-2 text-red-400 hover:text-red-300 transition-colors"
+                className="px-4 py-2 text-red-600 hover:text-red-500 transition-colors"
               >
                 Clear All
               </button>
@@ -142,13 +146,13 @@ function URLsPanel() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+            <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
               2
             </div>
-            <h2 className="text-lg font-semibold text-white">Select a Scraper Template</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Select a Scraper Template</h2>
           </div>
           <button
-            className="flex items-center space-x-1 text-purple-400 hover:text-purple-300 text-sm"
+            className="flex items-center space-x-1 text-purple-600 hover:text-purple-500 text-sm"
             onClick={addNewScraperTemplate}
           >
             <span>+</span>
@@ -157,15 +161,15 @@ function URLsPanel() {
         </div>
 
         {scraperTemplates.map(template => (
-          <div key={template.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700 mt-4">
+          <div key={template.id} className="bg-white rounded-lg p-4 border border-gray-300 mt-4">
             <div className="flex items-center space-x-6 mb-4">
               <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs">✓</span>
               </div>
-              <span className="text-white font-medium">{template.name}</span>
+              <span className="text-gray-900 font-medium">{template.name}</span>
               <div className="ml-auto flex items-center space-x-2">
                 <button
-                  className="w-5 h-5 text-gray-400 hover:text-red-400 transition-colors"
+                  className="w-5 h-5 text-gray-600 hover:text-red-600 transition-colors"
                   onClick={() => deleteScraperTemplate(template.id)}
                   title="Delete scraper template"
                 >
@@ -175,21 +179,21 @@ function URLsPanel() {
             </div>
 
             <div className="space-y-4">
-              <div className="text-sm text-gray-400 mb-3">Get started with</div>
+              <div className="text-sm text-gray-600 mb-3">Get started with</div>
               
               <button className="w-full p-3 rounded-lg border-2 border-purple-600 bg-purple-600/10 transition-colors hover:bg-purple-600/20">
                 <div className="flex items-center justify-center space-x-2">
-                  <span className="text-purple-400">✨</span>
-                  <span className="text-white">AI Suggest Fields</span>
+                  <span className="text-purple-600">✨</span>
+                  <span className="text-gray-900">AI Suggest Fields</span>
                 </div>
               </button>
 
               <div className="text-center text-gray-500 text-sm py-2">OR</div>
 
-              <button className="w-full p-3 rounded-lg border-2 border-gray-600 hover:border-gray-500 transition-colors hover:bg-gray-700/50">
+              <button className="w-full p-3 rounded-lg border-2 border-gray-300 hover:border-gray-400 transition-colors hover:bg-gray-50">
                 <div className="flex items-center justify-center space-x-2">
                   <span>📝</span>
-                  <span className="text-white">Enter Manually</span>
+                  <span className="text-gray-900">Enter Manually</span>
                 </div>
               </button>
             </div>
@@ -203,13 +207,13 @@ function URLsPanel() {
         disabled={isLoading || validUrlsCount === 0}
         className={`mt-8 w-full py-3 px-4 rounded-lg font-semibold transition-colors ${
           isLoading || validUrlsCount === 0
-            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
             : 'bg-purple-600 hover:bg-purple-700 text-white'
         }`}
       >
         {isLoading ? (
           <div className="flex items-center justify-center space-x-2">
-            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
             <span>Processing {validUrlsCount} URLs...</span>
           </div>
         ) : (
@@ -219,7 +223,9 @@ function URLsPanel() {
           </div>
         )}
       </button>
-    </div>
+        </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

@@ -13,22 +13,51 @@ export class ScrapingService {
   private async getActiveTab(): Promise<chrome.tabs.Tab> {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tabs[0] || !tabs[0].id) throw new Error('No active tab found');
-    return tabs[0];
+    
+    // Check if tab is accessible
+    const tab = tabs[0];
+    if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('moz-extension://')) {
+      throw new Error('Cannot access browser internal pages. Please navigate to a regular website.');
+    }
+    
+    return tab;
   }
 
   private async injectContentScript(tabId: number): Promise<void> {
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await chrome.tabs.sendMessage(tabId, { action: 'getPageInfo' }).catch(() => null);
-        if (!response) {
-          await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const testResponse = await chrome.tabs.sendMessage(tabId, { action: 'getPageInfo' }).catch(() => null);
-          if (testResponse) return;
-        } else return;
-      } catch (error) {
-        if (attempt === maxRetries) throw new Error('Unable to access the current page. Please refresh and try again.');
+        // First, check if content script is already loaded
+        const response = await chrome.tabs.sendMessage(tabId, { action: 'ping' }).catch(() => null);
+        
+        if (response && response.success) {
+          return; // Content script is already loaded and responding
+        }
+        
+        // Inject content script
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ['content.js']
+        });
+        
+        // Wait for script to load and test connection
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        const testResponse = await chrome.tabs.sendMessage(tabId, { action: 'ping' }).catch(() => null);
+        if (testResponse && testResponse.success) {
+          return;
+        }
+        
+      } catch (error: any) {
+        console.error(`Content script injection attempt ${attempt} failed:`, error);
+        
+        if (attempt === maxRetries) {
+          if (error.message?.includes('Cannot access') || error.message?.includes('chrome://')) {
+            throw new Error('Cannot access this page. Please navigate to a regular website and try again.');
+          }
+          throw new Error('Unable to access the current page. Please refresh and try again.');
+        }
+        
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
@@ -188,9 +217,26 @@ export class ScrapingService {
     try {
       const tab = await this.getActiveTab();
       if (!tab.id) throw new Error('Invalid tab ID');
+      
+      // Wait a bit for page to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       await this.injectContentScript(tab.id);
       const response = await this.sendMessage(tab.id, { action: 'getPageInfo' });
       return response.pageInfo;
-    } catch (error) { throw error; }
+    } catch (error: any) {
+      console.error('Failed to get page info:', error);
+      
+      // Provide more specific error messages
+      if (error.message?.includes('Cannot access')) {
+        throw new Error('Cannot access this page. Please navigate to a regular website.');
+      } else if (error.message?.includes('No active tab')) {
+        throw new Error('No active tab found. Please make sure you have a tab open.');
+      } else if (error.message?.includes('refresh')) {
+        throw error; // Re-throw refresh message as-is
+      } else {
+        throw new Error('Unable to access the current page. Please refresh and try again.');
+      }
+    }
   }
 }

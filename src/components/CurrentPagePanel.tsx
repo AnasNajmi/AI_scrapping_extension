@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ErrorBoundary } from './ErrorBoundary.js';
 import { ScrapingService } from '../services/ScrapingService.js';
 import type { ExtractionConfig, ExtractionResult, ExtractionField } from '../types/scraping.js';
 
@@ -208,9 +209,12 @@ function CurrentPagePanel() {
   };
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Step 1: Choose a Data Source */}
-      <div>
+    <ErrorBoundary fallback="Error loading current page panel. Please refresh and try again.">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6"
+             style={{ maxHeight: 'calc(100vh - 120px)' }}>
+          {/* Step 1: Choose a Data Source */}
+          <div>
         <div className="flex items-center space-x-2 mb-4">
           <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
             1
@@ -255,14 +259,6 @@ function CurrentPagePanel() {
               <button className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
                 <span className="text-white text-xs">✨</span>
               </button>
-              <svg
-                className={`w-4 h-4 text-gray-600 transition-transform ${showPaginationDropdown ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
             </div>
           </button>
 
@@ -296,211 +292,213 @@ function CurrentPagePanel() {
         </div>
       </div>
 
-      {/* Step 2: Select a Scraper Template */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-              2
+          {/* Step 2: Select a Scraper Template */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  2
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Select a Scraper Template</h2>
+              </div>
+              <button
+                className="flex items-center space-x-1 text-purple-600 hover:text-purple-500 text-sm"
+                onClick={addNewScraperTemplate}
+              >
+                <span>+</span>
+                <span>New Scraper Template</span>
+              </button>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">Select a Scraper Template</h2>
+
+            {scraperTemplates.map((template) => (
+              <div key={template.id} className="bg-white rounded-lg p-4 border border-gray-300 mt-4">
+                <div className="flex items-center space-x-6 mb-4">
+                  <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-gray-900 font-medium">{template.name}</span>
+                  <div className="ml-auto flex items-center space-x-2">
+                    <button 
+                      className="w-5 h-5 text-gray-600 hover:text-red-600 transition-colors"
+                      onClick={() => deleteScraperTemplate(template.id)}
+                      title="Delete scraper template"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-600 mb-3">Get started with</div>
+                  
+                  <button className="w-full p-3 rounded-lg border-2 border-purple-600 bg-purple-600/10 transition-colors hover:bg-purple-600/20">
+                    <div className="flex items-center justify-center space-x-2">
+                      <span className="text-purple-600">✨</span>
+                      <span className="text-gray-900">AI Suggest Fields</span>
+                    </div>
+                  </button>
+
+                  <div className="text-center text-gray-500 text-sm py-1">OR</div>
+
+                  <button className="w-full p-3 rounded-lg border-2 border-gray-300 hover:border-gray-400 transition-colors hover:bg-gray-50 mb-4">
+                    <div className="flex items-center justify-center space-x-2">
+                      <span>📝</span>
+                      <span className="text-gray-900">Enter Manually</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-          <button
-            className="flex items-center space-x-1 text-purple-400 hover:text-purple-300 text-sm"
-            onClick={addNewScraperTemplate}
+
+          {/* Extraction Results */}
+          {extractionResult && (
+            <div className="bg-white rounded-lg p-4 border border-gray-300">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">Extraction Results</h3>
+                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                  extractionResult.success 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {extractionResult.success ? 'Success' : 'Failed'}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Total Pages:</span>
+                  <span className="text-gray-900 ml-2">{extractionResult.stats.totalPages}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Total Rows:</span>
+                  <span className="text-gray-900 ml-2">{extractionResult.stats.totalRows}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Duplicates Removed:</span>
+                  <span className="text-gray-900 ml-2">{extractionResult.stats.duplicatesRemoved}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Duration:</span>
+                  <span className="text-gray-900 ml-2">{(extractionResult.performance.duration / 1000).toFixed(2)}s</span>
+                </div>
+              </div>
+
+              {extractionResult.data.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <button
+                    onClick={downloadAsCSV}
+                    className="flex items-center space-x-1 px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded transition-colors"
+                  >
+                    <span>📊</span>
+                    <span>Download CSV</span>
+                  </button>
+                  <button
+                    onClick={downloadAsJSON}
+                    className="flex items-center space-x-1 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+                  >
+                    <span>📄</span>
+                    <span>Download JSON</span>
+                  </button>
+                  <button
+                    onClick={copyToClipboard}
+                    className="flex items-center space-x-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                  >
+                    <span>📋</span>
+                    <span>Copy Table</span>
+                  </button>
+                </div>
+              )}
+
+              {extractionResult.data.length > 0 && (
+                <div>
+                  <h4 className="text-gray-900 font-medium mb-2">Data Table (All {extractionResult.data.length} rows):</h4>
+                  <div className="bg-gray-50 border border-gray-200 rounded p-3 max-h-96 overflow-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-gray-300">
+                          {Object.keys(extractionResult.data[0])
+                            .filter(key => key !== '_meta')
+                            .map((header) => (
+                              <th key={header} className="px-2 py-2 text-gray-700 font-medium capitalize">
+                                {header}
+                              </th>
+                            ))}
+                          <th className="px-2 py-2 text-gray-700 font-medium">Source</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {extractionResult.data.map((row, index) => (
+                          <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
+                            {Object.keys(row)
+                              .filter(key => key !== '_meta')
+                              .map((key) => (
+                                <td key={key} className="px-2 py-2 text-gray-800 max-w-xs truncate" title={String(row[key as keyof typeof row] || '')}>
+                                  {row[key as keyof typeof row] || '-'}
+                                </td>
+                              ))}
+                            <td className="px-2 py-2 text-gray-600 text-xs">
+                              Page {row._meta.pageIndex + 1}, Row {row._meta.rowIndex + 1}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {extractionResult.data.length > 0 && (
+                <details className="mt-4">
+                  <summary className="text-gray-900 font-medium mb-2 cursor-pointer hover:text-gray-700">
+                    View Raw JSON Data (Click to expand)
+                  </summary>
+                  <div className="bg-gray-50 border border-gray-200 rounded p-3 max-h-48 overflow-y-auto mt-2">
+                    <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                      {JSON.stringify(extractionResult.data, null, 2)}
+                    </pre>
+                  </div>
+                </details>
+              )}
+
+              {extractionResult.errors.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-red-600 font-medium mb-2">Errors:</h4>
+                  <ul className="text-red-500 text-xs space-y-1">
+                    {extractionResult.errors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Scrape Button */}
+          <button 
+            onClick={handleScrapeData}
+            disabled={isLoading}
+            className={`mt-8 w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
+              isLoading 
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                : 'bg-purple-600 hover:bg-purple-500 text-white'
+            }`}
           >
-            <span>+</span>
-            <span>New Scraper Template</span>
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                <span>Scraping...</span>
+              </>
+            ) : (
+              <>
+                <span>🔧</span>
+                <span>Scrape {selectedPaginationOption?.label}</span>
+              </>
+            )}
           </button>
         </div>
-
-        {scraperTemplates.map((template) => (
-          <div key={template.id} className="bg-white rounded-lg p-4 border border-gray-300 mt-4">
-            <div className="flex items-center space-x-6 mb-4">
-              <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✓</span>
-              </div>
-              <span className="text-gray-900 font-medium">{template.name}</span>
-              <div className="ml-auto flex items-center space-x-2">
-                <button 
-                  className="w-5 h-5 text-gray-600 hover:text-red-600 transition-colors"
-                  onClick={() => deleteScraperTemplate(template.id)}
-                  title="Delete scraper template"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="text-sm text-gray-600 mb-3">Get started with</div>
-              
-              <button className="w-full p-3 rounded-lg border-2 border-purple-600 bg-purple-600/10 transition-colors hover:bg-purple-600/20">
-                <div className="flex items-center justify-center space-x-2">
-                  <span className="text-purple-400">✨</span>
-                  <span className="text-gray-900">AI Suggest Fields</span>
-                </div>
-              </button>
-
-              <div className="text-center text-gray-500 text-sm py-1">OR</div>
-
-              <button className="w-full p-3 rounded-lg border-2 border-gray-300 hover:border-gray-400 transition-colors hover:bg-gray-50 mb-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <span>📝</span>
-                  <span className="text-gray-900">Enter Manually</span>
-                </div>
-              </button>
-            </div>
-          </div>
-        ))}
       </div>
-
-      {/* Extraction Results */}
-      {extractionResult && (
-        <div className="bg-white rounded-lg p-4 border border-gray-300">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-gray-900">Extraction Results</h3>
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              extractionResult.success 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-red-100 text-red-700'
-            }`}>
-              {extractionResult.success ? 'Success' : 'Failed'}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-            <div>
-              <span className="text-gray-600">Total Pages:</span>
-              <span className="text-gray-900 ml-2">{extractionResult.stats.totalPages}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Total Rows:</span>
-              <span className="text-white ml-2">{extractionResult.stats.totalRows}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Duplicates Removed:</span>
-              <span className="text-white ml-2">{extractionResult.stats.duplicatesRemoved}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Duration:</span>
-              <span className="text-white ml-2">{(extractionResult.performance.duration / 1000).toFixed(2)}s</span>
-            </div>
-          </div>
-
-          {extractionResult.data.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              <button
-                onClick={downloadAsCSV}
-                className="flex items-center space-x-1 px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded transition-colors"
-              >
-                <span>📊</span>
-                <span>Download CSV</span>
-              </button>
-              <button
-                onClick={downloadAsJSON}
-                className="flex items-center space-x-1 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
-              >
-                <span>📄</span>
-                <span>Download JSON</span>
-              </button>
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center space-x-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
-              >
-                <span>📋</span>
-                <span>Copy Table</span>
-              </button>
-            </div>
-          )}
-
-          {extractionResult.data.length > 0 && (
-            <div>
-              <h4 className="text-white font-medium mb-2">Data Table (All {extractionResult.data.length} rows):</h4>
-              <div className="bg-gray-900 rounded p-3 max-h-96 overflow-auto">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      {Object.keys(extractionResult.data[0])
-                        .filter(key => key !== '_meta')
-                        .map((header) => (
-                          <th key={header} className="px-2 py-2 text-gray-300 font-medium capitalize">
-                            {header}
-                          </th>
-                        ))}
-                      <th className="px-2 py-2 text-gray-300 font-medium">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {extractionResult.data.map((row, index) => (
-                      <tr key={index} className="border-b border-gray-800 hover:bg-gray-800/50">
-                        {Object.keys(row)
-                          .filter(key => key !== '_meta')
-                          .map((key) => (
-                            <td key={key} className="px-2 py-2 text-gray-200 max-w-xs truncate" title={String(row[key as keyof typeof row] || '')}>
-                              {row[key as keyof typeof row] || '-'}
-                            </td>
-                          ))}
-                        <td className="px-2 py-2 text-gray-400 text-xs">
-                          Page {row._meta.pageIndex + 1}, Row {row._meta.rowIndex + 1}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {extractionResult.data.length > 0 && (
-            <details className="mt-4">
-              <summary className="text-white font-medium mb-2 cursor-pointer hover:text-gray-300">
-                View Raw JSON Data (Click to expand)
-              </summary>
-              <div className="bg-gray-900 rounded p-3 max-h-48 overflow-y-auto mt-2">
-                <pre className="text-xs text-gray-300 whitespace-pre-wrap">
-                  {JSON.stringify(extractionResult.data, null, 2)}
-                </pre>
-              </div>
-            </details>
-          )}
-
-          {extractionResult.errors.length > 0 && (
-            <div className="mt-3">
-              <h4 className="text-red-400 font-medium mb-2">Errors:</h4>
-              <ul className="text-red-300 text-xs space-y-1">
-                {extractionResult.errors.map((error, index) => (
-                  <li key={index}>• {error}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Scrape Button */}
-      <button 
-        onClick={handleScrapeData}
-        disabled={isLoading}
-        className={`mt-8 w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
-          isLoading 
-            ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
-            : 'bg-purple-600 hover:bg-purple-500 text-white'
-        }`}
-      >
-        {isLoading ? (
-          <>
-            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-            <span>Scraping...</span>
-          </>
-        ) : (
-          <>
-            <span>🔧</span>
-            <span>Scrape {selectedPaginationOption?.label}</span>
-          </>
-        )}
-      </button>
-    </div>
+    </ErrorBoundary>
   );
 }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Agentic AI Web Scraper",
-  "description": "A Chrome Extension for AI-assisted web scraping.",
+  "description": "A Chrome Extension for AI-assisted web scraping with pagination support.",
   "version": "1.0",
   "action": {
     "default_popup": "index.html"
@@ -11,11 +11,14 @@
     "storage",
     "scripting",
     "notifications",
-    "sidePanel"
+    "sidePanel",
+    "tabs",
+    "declarativeContent"
   ],
   "host_permissions": [
     "http://*/*",
-    "https://*/*"
+    "https://*/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,10 +26,10 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
-  "content_scripts": [
-  {
-    "matches": ["<all_urls>"],
-    "js": ["content.js"]
-  }
-]
+  "web_accessible_resources": [
+    {
+      "resources": ["content.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

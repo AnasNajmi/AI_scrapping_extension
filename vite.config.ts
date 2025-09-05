@@ -18,7 +18,7 @@ export default defineConfig({
         popup: resolve(__dirname, 'public/index.html'),
         sidepanel: resolve(__dirname, 'src/sidepanel/index.tsx'),
         background: resolve(__dirname, 'src/background/background.ts'),
-        content: resolve(__dirname, 'src/content/content.ts'),
+        content: resolve(__dirname, 'content.js'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
