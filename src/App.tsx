@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import CurrentPagePanel from './components/CurrentPagePanel.js';
-import URLsPanel from './components/URLsPanel.js';
-import FileImagePanel from './components/FileImagePanel.js';
+import CurrentPagePanel from './components/CurrentPagePanel';
+import URLsPanel from './components/URLsPanel';
+import FileImagePanel from './components/FileImagePanel';
+
+console.log('App.tsx loading...');
 
 const TABS = [
   { key: 'current', label: 'Current Page', icon: '📄' },
@@ -10,31 +12,44 @@ const TABS = [
 ];
 
 function App() {
+  console.log('App component rendering...');
   const [activeTab, setActiveTab] = useState('current');
 
+  console.log('About to return JSX...');
+
   return (
-    <div className="h-screen bg-white text-gray-900 flex flex-col">
-      <header className="bg-gray-50 p-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">AI</span>
+    <div className="h-screen bg-background text-foreground flex flex-col">
+      <header className="bg-card p-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-glow">
+              <span className="text-primary-foreground font-bold text-sm">AI</span>
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">AI Web Scraper</h1>
+              <p className="text-sm text-muted-foreground">Intelligent data extraction</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">Web Scraper</h1>
-            <p className="text-sm text-gray-600">AI-powered data extraction</p>
+          <div className="flex items-center space-x-2">
+            <button className="px-3 py-1.5 bg-gradient-primary text-primary-foreground text-sm font-medium rounded-md hover:shadow-glow transition-all">
+              Try Pro
+            </button>
+            <div className="w-8 h-8 bg-destructive rounded-full flex items-center justify-center">
+              <span className="text-destructive-foreground text-xs font-bold">1</span>
+            </div>
           </div>
         </div>
       </header>
 
-      <nav className="bg-gray-50 border-b border-gray-200">
-        <div className="flex">
+      <nav className="bg-card border-b border-border">
+        <div className="flex px-4">
           {TABS.map(tab => (
             <button
               key={tab.key}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
+              className={`px-4 py-3 text-sm font-medium transition-all flex items-center space-x-2 border-b-2 ${
                 activeTab === tab.key
-                  ? 'bg-purple-600 text-white border-b-2 border-purple-400'
-                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'text-foreground border-primary bg-primary/10'
+                  : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
               }`}
               onClick={() => setActiveTab(tab.key)}
             >
@@ -45,23 +60,13 @@ function App() {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-4xl p-4 md:p-6">
-        {activeTab === 'current' && <CurrentPagePanel />}
-        {activeTab === 'urls' && <URLsPanel />}
-        {activeTab === 'file' && <FileImagePanel />}
+      <main className="flex-1 overflow-y-auto bg-background">
+        <div className="w-full max-w-4xl mx-auto p-6">
+          {activeTab === 'current' && <CurrentPagePanel />}
+          {activeTab === 'urls' && <URLsPanel />}
+          {activeTab === 'file' && <FileImagePanel />}
         </div>
       </main>
-
-      <footer className="bg-gray-50 p-3 border-t border-gray-200">
-        <div className="flex items-center justify-between text-xs text-gray-600">
-          <span>v1.0.0</span>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span>disconnected</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

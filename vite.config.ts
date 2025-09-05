@@ -16,15 +16,12 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'public/index.html'),
-        sidepanel: resolve(__dirname, 'src/sidepanel/index.tsx'),
+        sidepanel: resolve(__dirname, 'public/sidepanel.html'),
         background: resolve(__dirname, 'src/background/background.ts'),
         content: resolve(__dirname, 'content.js'),
       },
       output: {
-        entryFileNames: (chunkInfo) => {
-          if (chunkInfo.name === 'sidepanel') {
-            return 'sidepanel.js';
-          }
+        entryFileNames: () => {
           return '[name].js';
         },
       },

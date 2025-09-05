@@ -1,22 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from '../App';
-import '../index.css';
-
-console.log('Sidepanel index.tsx loading...');
+import App from './App';
+import './index.css';
 
 // Build version for production
 const root = ReactDOM.createRoot(document.getElementById('sidepanel-root')!);
-
-console.log('About to render App...');
 
 root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
-
-console.log('App rendered successfully');
 
 // Handle sidepanel-specific functionality
 if (typeof (globalThis as any).chrome !== 'undefined' && (globalThis as any).chrome.runtime) {

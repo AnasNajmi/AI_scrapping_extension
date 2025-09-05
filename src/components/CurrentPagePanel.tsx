@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ErrorBoundary } from './ErrorBoundary.js';
-import { ScrapingService } from '../services/ScrapingService.js';
-import type { ExtractionConfig, ExtractionResult, ExtractionField } from '../types/scraping.js';
+import { ErrorBoundary } from './ErrorBoundary';
+import { ScrapingService } from '../services/ScrapingService';
+import type { ExtractionConfig, ExtractionResult, ExtractionField } from '../types/scraping';
 
 interface PaginationOption {
   key: string;
@@ -39,6 +39,8 @@ function CurrentPagePanel() {
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentPageInfo, setCurrentPageInfo] = useState<{ url: string; title: string; domain: string } | null>(null);
+  const [showFields, setShowFields] = useState(false);
+  const [fields, setFields] = useState(['Title', 'url', 'text']);
 
   const scrapingService = ScrapingService.getInstance();
 
@@ -50,14 +52,29 @@ function CurrentPagePanel() {
     try {
       const pageInfo = await scrapingService.getCurrentPageInfo();
       setCurrentPageInfo(pageInfo);
+      setError(null); // Clear any previous errors
     } catch (err) {
       console.error('Failed to load page info:', err);
-      setError('Unable to access current page. Please refresh and try again.');
+      
+      // Handle specific error cases
+      if (err instanceof Error) {
+        if (err.message.includes('Cannot access browser internal pages')) {
+          setError('Cannot access browser internal pages. Please navigate to a regular website.');
+        } else if (err.message.includes('No active tab')) {
+          setError('No active tab found. Please make sure you have a tab open.');
+        } else if (err.message.includes('refresh')) {
+          setError(err.message);
+        } else {
+          setError('Unable to access the current page. Please refresh and try again.');
+        }
+      } else {
+        setError('Unable to access the current page. Please refresh and try again.');
+      }
     }
   };
 
   const createSampleExtractionConfig = (): ExtractionConfig => {
-    const fields: ExtractionField[] = [
+    const extractionFields: ExtractionField[] = [
       {
         name: 'title',
         selector: 'h1, h2, h3, h4, .headline, .title, [class*="title"], [class*="headline"], .story-title, .article-title',
@@ -85,13 +102,12 @@ function CurrentPagePanel() {
     ];
 
     return {
-      fields,
+      fields: extractionFields,
       pagination: {
         type: selectedPagination as any,
         maxPages: 5,
         maxScrolls: 10,
         idleTimeout: 5000,
-        // nextSelector: 'a[aria-label="Next"], .next, .pagination-next, [class*="next"]'
         nextSelector: 'a#pnnext, a[aria-label="Next"], a[aria-label="Next page"], .next, .pagination-next, [class*="next"]'
       },
       maxRows: 500
@@ -209,38 +225,68 @@ function CurrentPagePanel() {
     setScraperTemplates(scraperTemplates.filter(template => template.id !== id));
   };
 
+  const addField = () => {
+    setFields([...fields, `Field ${fields.length + 1}`]);
+  };
+
+  const removeField = (index: number) => {
+    if (fields.length > 1) {
+      setFields(fields.filter((_, i) => i !== index));
+    }
+  };
+
   return (
     <ErrorBoundary fallback="Error loading current page panel. Please refresh and try again.">
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Step 1: Choose a Data Source */}
-        <div>
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-              1
+        <div className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+              <span className="text-muted-foreground text-sm font-bold">1</span>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">Choose a Data Source</h2>
+            <h2 className="text-xl font-semibold text-foreground">Choose a Data Source</h2>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 bg-muted rounded-lg p-1">
+            <button className="bg-card text-foreground px-4 py-2 rounded-md text-sm font-medium shadow-sm">
+              Current Page
+            </button>
+            <button className="text-muted-foreground px-4 py-2 rounded-md text-sm font-medium hover:text-foreground transition-colors">
+              URLs
+            </button>
+            <button className="text-muted-foreground px-4 py-2 rounded-md text-sm font-medium hover:text-foreground transition-colors">
+              File & Image
+            </button>
           </div>
 
           {/* Current Page Info */}
           {currentPageInfo && (
-            <div className="flex items-center space-x-2 p-3 bg-green-900/20 border border-green-700 rounded-lg mb-4">
-              <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✓</span>
+            <div className="flex items-center space-x-3 p-4 bg-card border border-border rounded-lg">
+              <div className="w-6 h-6 bg-success rounded-full flex items-center justify-center">
+                <span className="text-success-foreground text-xs">G</span>
               </div>
               <div className="flex-1">
-                <div className="text-green-400 text-sm font-medium">{currentPageInfo.title}</div>
-                <div className="text-green-300 text-xs">{currentPageInfo.domain}</div>
+                <div className="text-foreground font-medium">{currentPageInfo.title}</div>
+                <div className="text-muted-foreground text-sm">{currentPageInfo.domain}</div>
               </div>
             </div>
           )}
 
           {/* Error Display */}
           {error && (
-            <div className="flex items-center space-x-2 p-3 bg-red-900/20 border border-red-700 rounded-lg mb-4">
-              <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✕</span>
+            <div className="flex items-start space-x-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="w-5 h-5 bg-destructive rounded-full flex items-center justify-center mt-0.5">
+                <span className="text-destructive-foreground text-xs">✕</span>
               </div>
-              <span className="text-red-400 text-sm">{error}</span>
+              <div className="flex-1">
+                <span className="text-destructive text-sm block mb-2">{error}</span>
+                <button
+                  onClick={loadCurrentPageInfo}
+                  className="px-3 py-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs rounded transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
             </div>
           )}
 
@@ -248,21 +294,24 @@ function CurrentPagePanel() {
           <div className="relative">
             <button
               onClick={() => setShowPaginationDropdown(!showPaginationDropdown)}
-              className="w-full flex items-center justify-between p-3 bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+              className="w-full flex items-center justify-between p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <span className="text-lg">{selectedPaginationOption?.icon}</span>
-                <span className="text-gray-900">{selectedPaginationOption?.label}</span>
+                <span className="text-xl">{selectedPaginationOption?.icon}</span>
+                <span className="text-foreground font-medium">{selectedPaginationOption?.label}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <button className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs">✨</span>
+                <button className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-glow">
+                  <span className="text-primary-foreground text-sm">✨</span>
                 </button>
+                <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
             </button>
 
             {showPaginationDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-lg shadow-elegant z-50">
                 {PAGINATION_OPTIONS.map((option) => (
                   <button
                     key={option.key}
@@ -270,19 +319,19 @@ function CurrentPagePanel() {
                       setSelectedPagination(option.key);
                       setShowPaginationDropdown(false);
                     }}
-                    className="w-full flex items-start space-x-3 p-3 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                    className="w-full flex items-start space-x-3 p-4 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
                   >
                     <span className="text-lg mt-0.5">{option.icon}</span>
                     <div className="flex-1 text-left">
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-900 font-medium">{option.label}</span>
+                        <span className="text-foreground font-medium">{option.label}</span>
                         {option.key === selectedPagination && (
-                          <div className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs">✓</span>
+                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                            <span className="text-primary-foreground text-xs">✓</span>
                           </div>
                         )}
                       </div>
-                      <p className="text-gray-600 text-sm mt-1">{option.description}</p>
+                      <p className="text-muted-foreground text-sm mt-1">{option.description}</p>
                     </div>
                   </button>
                 ))}
@@ -292,59 +341,116 @@ function CurrentPagePanel() {
         </div>
 
         {/* Step 2: Select a Scraper Template */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                2
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                <span className="text-muted-foreground text-sm font-bold">2</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900">Select a Scraper Template</h2>
+              <h2 className="text-xl font-semibold text-foreground">Select a Scraper Template</h2>
             </div>
             <button
-              className="flex items-center space-x-1 text-purple-600 hover:text-purple-500 text-sm"
+              className="flex items-center space-x-2 text-primary hover:text-primary-glow text-sm font-medium transition-colors"
               onClick={addNewScraperTemplate}
             >
-              <span>+</span>
+              <span className="text-lg">+</span>
               <span>New Scraper Template</span>
             </button>
           </div>
 
           {scraperTemplates.map((template) => (
-            <div key={template.id} className="bg-white rounded-lg p-4 border border-gray-300 mt-4">
-              <div className="flex items-center space-x-6 mb-4">
-                <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
+            <div key={template.id} className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                    <span className="text-primary-foreground text-xs">✓</span>
+                  </div>
+                  <span className="text-foreground font-medium">{template.name}</span>
                 </div>
-                <span className="text-gray-900 font-medium">{template.name}</span>
-                <div className="ml-auto flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
                   <button
-                    className="w-5 h-5 text-gray-600 hover:text-red-600 transition-colors"
+                    className="w-6 h-6 text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center"
                     onClick={() => deleteScraperTemplate(template.id)}
                     title="Delete scraper template"
                   >
-                    ✕
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  <button
+                    className="w-6 h-6 text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+                    onClick={() => setShowFields(!showFields)}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                    </svg>
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="text-sm text-gray-600 mb-3">Get started with</div>
+              <div className="p-4 space-y-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-primary text-sm">✨</span>
+                  <span className="text-primary text-sm font-medium">AI Improve Fields</span>
+                </div>
 
-                <button className="w-full p-3 rounded-lg border-2 border-purple-600 bg-purple-600/10 transition-colors hover:bg-purple-600/20">
-                  <div className="flex items-center justify-center space-x-2">
-                    <span className="text-purple-600">✨</span>
-                    <span className="text-gray-900">AI Suggest Fields</span>
+                {showFields && (
+                  <div className="space-y-3">
+                    {fields.map((field, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <div className="w-6 h-6 text-muted-foreground flex items-center justify-center">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={field}
+                            onChange={(e) => {
+                              const newFields = [...fields];
+                              newFields[index] = e.target.value;
+                              setFields(newFields);
+                            }}
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                            placeholder="Field name"
+                          />
+                        </div>
+                        <button
+                          onClick={() => removeField(index)}
+                          className="w-6 h-6 text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      onClick={addField}
+                      className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span className="text-lg">+</span>
+                      <span className="text-sm">Add a Field</span>
+                    </button>
+
+                    <div className="pt-4 border-t border-border">
+                      <button className="flex items-center justify-between w-full p-3 bg-background border border-border rounded-md hover:border-primary/50 transition-colors">
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" />
+                          </svg>
+                          <span className="text-foreground text-sm">Output as a table</span>
+                        </div>
+                        <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </button>
-
-                <div className="text-center text-gray-500 text-sm py-1">OR</div>
-
-                <button className="w-full p-3 rounded-lg border-2 border-gray-300 hover:border-gray-400 transition-colors hover:bg-gray-50 mb-4">
-                  <div className="flex items-center justify-center space-x-2">
-                    <span>📝</span>
-                    <span className="text-gray-900">Enter Manually</span>
-                  </div>
-                </button>
+                )}
               </div>
             </div>
           ))}
@@ -352,55 +458,55 @@ function CurrentPagePanel() {
 
         {/* Extraction Results */}
         {extractionResult && (
-          <div className="bg-white rounded-lg p-4 border border-gray-300">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-900">Extraction Results</h3>
-              <div className={`px-2 py-1 rounded text-xs font-medium ${extractionResult.success
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Extraction Results</h3>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${extractionResult.success
+                  ? 'bg-success/20 text-success'
+                  : 'bg-destructive/20 text-destructive'
                 }`}>
                 {extractionResult.success ? 'Success' : 'Failed'}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-              <div>
-                <span className="text-gray-600">Total Pages:</span>
-                <span className="text-gray-900 ml-2">{extractionResult.stats.totalPages}</span>
+            <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Pages:</span>
+                <span className="text-foreground font-medium">{extractionResult.stats.totalPages}</span>
               </div>
-              <div>
-                <span className="text-gray-600">Total Rows:</span>
-                <span className="text-gray-900 ml-2">{extractionResult.stats.totalRows}</span>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Rows:</span>
+                <span className="text-foreground font-medium">{extractionResult.stats.totalRows}</span>
               </div>
-              <div>
-                <span className="text-gray-600">Duplicates Removed:</span>
-                <span className="text-gray-900 ml-2">{extractionResult.stats.duplicatesRemoved}</span>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Duplicates Removed:</span>
+                <span className="text-foreground font-medium">{extractionResult.stats.duplicatesRemoved}</span>
               </div>
-              <div>
-                <span className="text-gray-600">Duration:</span>
-                <span className="text-gray-900 ml-2">{(extractionResult.performance.duration / 1000).toFixed(2)}s</span>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Duration:</span>
+                <span className="text-foreground font-medium">{(extractionResult.performance.duration / 1000).toFixed(2)}s</span>
               </div>
             </div>
 
             {extractionResult.data.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-6">
                 <button
                   onClick={downloadAsCSV}
-                  className="flex items-center space-x-1 px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs rounded transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-success hover:bg-success/90 text-success-foreground text-sm font-medium rounded-md transition-colors"
                 >
                   <span>📊</span>
                   <span>Download CSV</span>
                 </button>
                 <button
                   onClick={downloadAsJSON}
-                  className="flex items-center space-x-1 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md transition-colors"
                 >
                   <span>📄</span>
                   <span>Download JSON</span>
                 </button>
                 <button
                   onClick={copyToClipboard}
-                  className="flex items-center space-x-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-accent hover:bg-accent/90 text-accent-foreground text-sm font-medium rounded-md transition-colors"
                 >
                   <span>📋</span>
                   <span>Copy Table</span>
@@ -409,60 +515,44 @@ function CurrentPagePanel() {
             )}
 
             {extractionResult.data.length > 0 && (
-              <div>
-                <h4 className="text-gray-900 font-medium mb-2">Data Table (All {extractionResult.data.length} rows):</h4>
-                <div className="bg-gray-50 border border-gray-200 rounded p-3 max-h-96 overflow-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-gray-300">
-                        {Object.keys(extractionResult.data[0])
+              <div className="bg-background border border-border rounded-lg p-4 max-h-96 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      {Object.keys(extractionResult.data[0])
+                        .filter(key => key !== '_meta')
+                        .map((header) => (
+                          <th key={header} className="px-3 py-2 text-left text-muted-foreground font-medium capitalize">
+                            {header}
+                          </th>
+                        ))}
+                      <th className="px-3 py-2 text-left text-muted-foreground font-medium">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extractionResult.data.map((row, index) => (
+                      <tr key={index} className="border-b border-border hover:bg-muted/30">
+                        {Object.keys(row)
                           .filter(key => key !== '_meta')
-                          .map((header) => (
-                            <th key={header} className="px-2 py-2 text-gray-700 font-medium capitalize">
-                              {header}
-                            </th>
+                          .map((key) => (
+                            <td key={key} className="px-3 py-2 text-foreground max-w-xs truncate" title={String(row[key as keyof typeof row] || '')}>
+                              {row[key as keyof typeof row] || '-'}
+                            </td>
                           ))}
-                        <th className="px-2 py-2 text-gray-700 font-medium">Source</th>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">
+                          Page {row._meta.pageIndex + 1}, Row {row._meta.rowIndex + 1}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {extractionResult.data.map((row, index) => (
-                        <tr key={index} className="border-b border-gray-200 hover:bg-gray-100">
-                          {Object.keys(row)
-                            .filter(key => key !== '_meta')
-                            .map((key) => (
-                              <td key={key} className="px-2 py-2 text-gray-800 max-w-xs truncate" title={String(row[key as keyof typeof row] || '')}>
-                                {row[key as keyof typeof row] || '-'}
-                              </td>
-                            ))}
-                          <td className="px-2 py-2 text-gray-600 text-xs">
-                            Page {row._meta.pageIndex + 1}, Row {row._meta.rowIndex + 1}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
-            {extractionResult.data.length > 0 && (
-              <details className="mt-4">
-                <summary className="text-gray-900 font-medium mb-2 cursor-pointer hover:text-gray-700">
-                  View Raw JSON Data (Click to expand)
-                </summary>
-                <div className="bg-gray-50 border border-gray-200 rounded p-3 max-h-48 overflow-y-auto mt-2">
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                    {JSON.stringify(extractionResult.data, null, 2)}
-                  </pre>
-                </div>
-              </details>
-            )}
-
             {extractionResult.errors.length > 0 && (
-              <div className="mt-3">
-                <h4 className="text-red-600 font-medium mb-2">Errors:</h4>
-                <ul className="text-red-500 text-xs space-y-1">
+              <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <h4 className="text-destructive font-medium mb-2">Errors:</h4>
+                <ul className="text-destructive text-sm space-y-1">
                   {extractionResult.errors.map((error, index) => (
                     <li key={index}>• {error}</li>
                   ))}
@@ -476,27 +566,25 @@ function CurrentPagePanel() {
         <button
           onClick={handleScrapeData}
           disabled={isLoading}
-          className={`mt-8 w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${isLoading
-              ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-              : 'bg-purple-600 hover:bg-purple-500 text-white'
+          className={`w-full py-4 px-6 rounded-lg font-medium transition-all flex items-center justify-center space-x-3 ${isLoading
+              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+              : 'bg-gradient-primary text-primary-foreground hover:shadow-glow'
             }`}
         >
           {isLoading ? (
             <>
-              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></div>
               <span>Scraping...</span>
             </>
           ) : (
             <>
-              <span>🔧</span>
-              <span>Scrape {selectedPaginationOption?.label}</span>
+              <span className="text-lg">🔧</span>
+              <span>Scrape</span>
             </>
           )}
         </button>
       </div>
-    
-      
-    </ErrorBoundary >
+    </ErrorBoundary>
   );
 }
 
